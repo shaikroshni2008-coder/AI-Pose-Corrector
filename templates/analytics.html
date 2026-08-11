@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Analytics & Physio Reports - AI Physiotherapist</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR HEADER -->
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-logo">
+        <i class="bi bi-activity"></i>
+      </div>
+      <div class="brand-text">
+        <h1>PhysioAI Recovery</h1>
+        <span>Post-Op Analytics & Tracking</span>
+      </div>
+    </a>
+
+    <div class="nav-links">
+      <a href="/" class="nav-item">
+        <i class="bi bi-camera-video"></i> Live Workout
+      </a>
+      <a href="/analytics" class="nav-item active">
+        <i class="bi bi-bar-chart-line"></i> Daily Analytics
+      </a>
+      <a href="/report_preview" class="nav-item">
+        <i class="bi bi-file-earmark-medical"></i> Physio Report
+      </a>
+    </div>
+
+    <div class="patient-badge">
+      <div class="patient-avatar">AM</div>
+      <div>
+        <div style="font-size: 12px; color: var(--text-main);">{{ profile.patient_name }}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">{{ profile.patient_id }}</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTAINER -->
+  <div class="app-container">
+    
+    <!-- STATS CARDS GRID -->
+    <div class="analytics-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <div class="stat-content">
+          <h4>Total Reps Today</h4>
+          <div class="value">{{ today.summary.total_reps }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: var(--success-light); color: var(--success);">
+          <i class="bi bi-bullseye"></i>
+        </div>
+        <div class="stat-content">
+          <h4>Avg Form Accuracy</h4>
+          <div class="value" style="color: var(--success);">{{ today.summary.overall_accuracy }}%</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: var(--indigo-light); color: var(--indigo);">
+          <i class="bi bi-stopwatch-fill"></i>
+        </div>
+        <div class="stat-content">
+          <h4>Rehab Duration</h4>
+          <div class="value" style="color: var(--indigo);">{{ today.summary.total_duration_minutes }} min</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="background-color: var(--warning-light); color: var(--warning);">
+          <i class="bi bi-award-fill"></i>
+        </div>
+        <div class="stat-content">
+          <h4>Completed Sets</h4>
+          <div class="value" style="color: var(--warning);">{{ today.summary.total_sessions }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="chart-section">
+      <!-- 7-Day Repetition & Accuracy Trend Chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="bi bi-graph-up-arrow"></i> 7-Day Recovery Adherence & Accuracy Trend
+          </div>
+        </div>
+        <div style="height: 320px; position: relative;">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Send Daily Report to Physiotherapist Form -->
+      <div class="card" style="border-color: var(--primary-border);">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="bi bi-send-fill" style="color: var(--primary);"></i> Send Report to Physiotherapist
+          </div>
+        </div>
+
+        <form id="physio-report-form" onsubmit="sendPhysioReport(event)">
+          <div class="form-group">
+            <label>Physiotherapist Email</label>
+            <input type="email" id="physio_email" class="form-control" value="{{ profile.physio_email }}" required>
+          </div>
+
+          <div class="form-group">
+            <label>Patient ID / Name</label>
+            <input type="text" id="patient_name" class="form-control" value="{{ profile.patient_name }} ({{ profile.patient_id }})" required>
+          </div>
+
+          <div class="form-group">
+            <label>Patient Self-Reported Pain & Notes (Scale 1-10)</label>
+            <textarea id="therapist_notes" class="form-control" rows="3" placeholder="e.g. Mild soreness in left biceps after 3rd set. Form accuracy remained above 90%."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            <i class="bi bi-envelope-paper"></i> Transmit Clinical Report
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TODAY'S EXERCISE SESSIONS BREAKDOWN TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="bi bi-list-check"></i> Today's Rehabilitation Sessions Log
+        </div>
+        <a href="/report_preview" class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;">
+          <i class="bi bi-printer"></i> Printable Summary
+        </a>
+      </div>
+
+      {% if today.sessions|length > 0 %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Exercise Mode</th>
+            <th>Reps Done</th>
+            <th>Target</th>
+            <th>Form Accuracy</th>
+            <th>Active Duration</th>
+            <th>Form Warnings</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for session in today.sessions %}
+          <tr>
+            <td>{{ session.timestamp.split(' ')[1] if ' ' in session.timestamp else session.timestamp }}</td>
+            <td><strong>{{ session.exercise_name }}</strong></td>
+            <td><span class="score-badge good">{{ session.reps_completed }} reps</span></td>
+            <td>{{ session.target_reps }}</td>
+            <td><strong style="color: var(--success);">{{ session.avg_accuracy_score }}%</strong></td>
+            <td>{{ session.active_duration_seconds }} sec</td>
+            <td>
+              {% if session.form_warnings and session.form_warnings != '[]' %}
+                <span style="color: var(--warning); font-size: 12px;"><i class="bi bi-exclamation-circle"></i> Minor drift noted</span>
+              {% else %}
+                <span style="color: var(--success); font-size: 12px;"><i class="bi bi-check-all"></i> Flawless Form</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <i class="bi bi-calendar-x" style="font-size: 36px; color: var(--text-subtle);"></i>
+        <p style="margin-top: 10px; font-size: 14px;">No exercise sessions recorded yet today.</p>
+        <a href="/" class="btn btn-primary" style="margin-top: 12px; display: inline-flex;">
+          <i class="bi bi-camera-video"></i> Start Your First Rehab Set
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-notification" id="toast">
+    <i class="bi bi-check-circle-fill" style="color: var(--success); font-size: 20px;"></i>
+    <span id="toast-msg">Report sent to physiotherapist!</span>
+  </div>
+
+  <!-- PASS HISTORY DATA TO JS -->
+  <script id="history-data" type="application/json">
+    {{ history | tojson | safe }}
+  </script>
+  <script>
+    const historyData = JSON.parse(document.getElementById('history-data').textContent);
+  </script>
+  <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+</body>
+</html>

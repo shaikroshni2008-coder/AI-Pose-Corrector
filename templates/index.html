@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Physiotherapist - Real-Time Posture & Rehab Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <!-- NAVBAR HEADER -->
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-logo">
+        <i class="bi bi-activity"></i>
+      </div>
+      <div class="brand-text">
+        <h1>PhysioAI Recovery</h1>
+        <span>Post-Op Pose Tracker</span>
+      </div>
+    </a>
+
+    <div class="nav-links">
+      <a href="/" class="nav-item active">
+        <i class="bi bi-camera-video"></i> Live Workout
+      </a>
+      <a href="/analytics" class="nav-item">
+        <i class="bi bi-bar-chart-line"></i> Daily Analytics
+      </a>
+      <a href="/report_preview" class="nav-item">
+        <i class="bi bi-file-earmark-medical"></i> Physio Report
+      </a>
+    </div>
+
+    <div class="patient-badge">
+      <div class="patient-avatar">AM</div>
+      <div>
+        <div style="font-size: 12px; color: var(--text-main);">{{ profile.patient_name }}</div>
+        <div style="font-size: 10px; color: var(--text-muted);">{{ profile.patient_id }}</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN APP CONTENT -->
+  <div class="app-container">
+    <div class="dashboard-grid">
+
+      <!-- LEFT SIDEBAR: 10 EXERCISE MODES -->
+      <div class="exercise-sidebar">
+        <div class="sidebar-header">
+          <h2>10 Rehab Exercises</h2>
+          <p>Select prescribed exercise to track posture & reps</p>
+        </div>
+
+        {% for key, ex in exercises.items() %}
+        <div class="exercise-card {% if key == active_exercise %}active{% endif %}" 
+             onclick="switchExercise('{{ key }}')" 
+             id="ex-card-{{ key }}">
+          <div class="exercise-icon-box">
+            <i class="bi {{ ex.icon }}"></i>
+          </div>
+          <div class="exercise-info">
+            <h3>{{ ex.name }}</h3>
+            <p>{{ ex.description }}</p>
+            <div class="exercise-meta">
+              <span><i class="bi bi-bullseye"></i> {{ ex.recommended_reps }} Reps</span>
+              <span>• {{ ex.category }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- CENTER STAGE: LIVE VIDEO FEED & CAMERA TRACKER -->
+      <div class="center-stage">
+        
+        <!-- Live Video Container -->
+        <div class="video-container card">
+          
+          <!-- Top Floating Glass Status Pills -->
+          <div class="live-pill top-left">
+            <div class="pulse-dot"></div>
+            <span id="active-ex-name">{{ exercises[active_exercise].name }}</span>
+          </div>
+
+          <div class="live-pill top-right">
+            <i class="bi bi-shield-check"></i>
+            <span id="form-score-pill">Form: 100%</span>
+          </div>
+
+          <!-- MJPEG Video Feed Stream -->
+          <img src="{{ url_for('video_feed') }}" alt="Live Posture Feed" class="video-feed" id="live-stream">
+
+          <!-- Hidden Video & Canvas for Client Webcam Capture Fallback -->
+          <video id="client-video" autoplay playsinline muted style="display: none;"></video>
+          <canvas id="client-canvas" width="640" height="480" style="display: none;"></canvas>
+
+          <!-- Bottom Live Feedback Toast Overlay -->
+          <div class="live-pill bottom-center" id="live-feedback-banner">
+            <i class="bi bi-info-circle-fill"></i> Position yourself clearly in front of camera.
+          </div>
+        </div>
+
+        <!-- Video Control Bar -->
+        <div class="video-controls">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-primary" onclick="startSession()">
+              <i class="bi bi-play-fill"></i> Start New Set
+            </button>
+            <button class="btn btn-secondary" onclick="stopSession()">
+              <i class="bi bi-stop-fill"></i> Save Session
+            </button>
+            <button class="btn btn-secondary" id="voice-toggle-btn" onclick="toggleVoiceCoaching()">
+              <i class="bi bi-volume-up-fill"></i> Voice Coach: ON
+            </button>
+          </div>
+
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-muted);">
+            <i class="bi bi-clock-history"></i> Duration: <span id="timer-display" style="color: var(--text-main); font-family: var(--font-mono);">00:00</span>
+          </div>
+        </div>
+
+        <!-- Posture Guidance & Clinical Tips -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="bi bi-lightbulb-fill"></i> Physiotherapist Form Tips
+            </div>
+            <span class="score-badge good" id="stage-badge">IDLE</span>
+          </div>
+
+          <ul class="tips-list" id="tips-container">
+            {% for tip in exercises[active_exercise].posture_tips %}
+              <li><i class="bi bi-check-circle-fill"></i> {{ tip }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: TELEMETRY & STATS GAUGES -->
+      <div class="right-panel">
+        
+        <!-- Repetition Counter Card -->
+        <div class="card telemetry-card">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+            Completed Repetitions
+          </div>
+
+          <div class="rep-counter-display">
+            <span class="rep-number" id="rep-count-val">0</span>
+            <span class="rep-target">/ <span id="rep-target-val">{{ exercises[active_exercise].recommended_reps }}</span></span>
+          </div>
+
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="rep-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;" id="progress-percent-label">
+            0% of target set achieved
+          </div>
+        </div>
+
+        <!-- Live Joint Angle Gauge -->
+        <div class="card angle-meter-box">
+          <div class="angle-label">Live Joint Angle</div>
+          <div class="angle-value"><span id="angle-val">0</span>°</div>
+          <div style="display: flex; gap: 16px; margin-top: 10px; font-size: 11px; color: var(--text-muted);">
+            <span>Target: <strong style="color: var(--primary);" id="target-angle-label">{{ exercises[active_exercise].angle_target }}°</strong></span>
+            <span>Rest: <strong style="color: var(--text-main);" id="rest-angle-label">{{ exercises[active_exercise].angle_rest }}°</strong></span>
+          </div>
+        </div>
+
+        <!-- Form Warnings & Compensation Alerts -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="bi bi-exclamation-triangle-fill" style="color: var(--warning);"></i> Form Analysis
+            </div>
+          </div>
+          
+          <div id="warnings-box" style="font-size: 13px; color: var(--text-muted);">
+            <div style="display: flex; align-items: center; gap: 8px; color: var(--success);">
+              <i class="bi bi-check-circle-fill"></i> Posture aligned correctly.
+            </div>
+          </div>
+        </div>
+
+        <!-- Physiotherapist Quick Report Banner -->
+        <div class="card" style="background: linear-gradient(135deg, var(--primary-light), #FFF); border-color: var(--primary-border);">
+          <h4 style="font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 4px;">
+            <i class="bi bi-envelope-paper-heart"></i> Daily Rehab Log
+          </h4>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+            Finished today's session? Send real-time tracking summary to your physiotherapist.
+          </p>
+          <a href="/analytics" class="btn btn-primary" style="width: 100%; justify-content: center;">
+            View Analytics & Send Report
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-notification" id="toast">
+    <i class="bi bi-check-circle-fill" style="color: var(--success); font-size: 20px;"></i>
+    <span id="toast-msg">Session saved successfully!</span>
+  </div>
+
+  <!-- FRONTEND SCRIPT CONTROLLER -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

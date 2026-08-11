@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Physiotherapist Clinical Daily Summary - {{ profile.patient_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { background-color: white !important; }
+      .report-paper { box-shadow: none !important; border: none !important; padding: 0 !important; }
+    }
+  </style>
+</head>
+<body style="background-color: var(--bg-subtle); padding-top: 30px; padding-bottom: 50px;">
+
+  <div class="no-print" style="max-width: 900px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center;">
+    <a href="/analytics" class="btn btn-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Analytics
+    </a>
+    <button class="btn btn-primary" onclick="window.print()">
+      <i class="bi bi-printer-fill"></i> Print / Save as PDF
+    </button>
+  </div>
+
+  <div class="report-paper">
+    
+    <!-- CLINICAL HEADER -->
+    <div class="report-header">
+      <div>
+        <h2>POST-OPERATIVE REHABILITATION REPORT</h2>
+        <p>PhysioAI Real-Time Biomechanical Posture Tracking</p>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 14px; font-weight: 800; color: var(--primary);">CONFIDENTIAL CLINICAL RECORD</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Date: {{ today.summary.log_date }}</div>
+      </div>
+    </div>
+
+    <!-- PATIENT & THERAPIST METADATA BLOCK -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background-color: var(--bg-linen); padding: 16px 24px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--card-border);">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">PATIENT DETAILS</div>
+        <div style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 2px;">{{ profile.patient_name }}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">ID: {{ profile.patient_id }}</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Protocol: {{ profile.recovery_plan }}</div>
+      </div>
+
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">ATTENDING PHYSIOTHERAPIST</div>
+        <div style="font-size: 15px; font-weight: 800; color: var(--text-main); margin-top: 2px;">{{ profile.physio_name }}</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Email: {{ profile.physio_email }}</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Facility: Advanced Physical Therapy Clinic</div>
+      </div>
+    </div>
+
+    <!-- DAILY COMPLIANCE SUMMARY -->
+    <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px;">
+      1. Daily Exercise Compliance & Adherence
+    </h3>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;">
+      <div style="background: var(--bg-subtle); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 11px; color: var(--text-muted);">Total Repetitions</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--primary);">{{ today.summary.total_reps }}</div>
+      </div>
+      
+      <div style="background: var(--bg-subtle); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 11px; color: var(--text-muted);">Form Accuracy</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--success);">{{ today.summary.overall_accuracy }}%</div>
+      </div>
+
+      <div style="background: var(--bg-subtle); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 11px; color: var(--text-muted);">Completed Sets</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--indigo);">{{ today.summary.total_sessions }}</div>
+      </div>
+
+      <div style="background: var(--bg-subtle); padding: 12px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 11px; color: var(--text-muted);">Active Time</div>
+        <div style="font-size: 22px; font-weight: 800; color: var(--text-main);">{{ today.summary.total_duration_minutes }} min</div>
+      </div>
+    </div>
+
+    <!-- EXERCISE SPECIFIC METRICS TABLE -->
+    <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px;">
+      2. Biomechanical Movement Analysis
+    </h3>
+
+    <table class="data-table" style="margin-bottom: 28px;">
+      <thead>
+        <tr>
+          <th>Exercise Name</th>
+          <th>Completed / Prescribed</th>
+          <th>Form Score %</th>
+          <th>Min Angle</th>
+          <th>Max Angle</th>
+          <th>Biomechanical Assessment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if today.sessions|length > 0 %}
+          {% for s in today.sessions %}
+          <tr>
+            <td><strong>{{ s.exercise_name }}</strong></td>
+            <td>{{ s.reps_completed }} / {{ s.target_reps }} reps</td>
+            <td><strong style="color: var(--success);">{{ s.avg_accuracy_score }}%</strong></td>
+            <td>{{ s.min_angle_achieved }}°</td>
+            <td>{{ s.max_angle_achieved }}°</td>
+            <td>
+              {% if s.avg_accuracy_score >= 90 %}
+                <span style="color: var(--success); font-weight: 600;">Excellent range of motion & steady joint control.</span>
+              {% else %}
+                <span style="color: var(--warning); font-weight: 600;">Moderate joint compensation; monitor elbow alignment.</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted);">No sessions logged today yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- PHYSIOTHERAPIST NOTES & CLINICAL SIGN-OFF -->
+    <h3 style="font-size: 16px; font-weight: 800; margin-bottom: 12px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px;">
+      3. Therapist Clinical Notes & Sign-off
+    </h3>
+
+    <div style="border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 16px; min-height: 100px; margin-bottom: 30px; font-size: 13px; color: var(--text-main); background-color: var(--bg-linen);">
+      <em>Therapist Recommendation:</em> Patient demonstrates strong adherence to prescribed post-operative protocol. Form accuracy score exceeds target benchmark. Continue current exercise routine 3x daily.
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; border-top: 1px dashed var(--card-border); padding-top: 20px;">
+      <div>
+        <div style="font-size: 12px; font-weight: 700; color: var(--text-muted);">AI CAMERA REHAB VERIFICATION</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Powered by Ultralytics YOLO-Pose Engine</div>
+      </div>
+
+      <div style="text-align: center;">
+        <div style="font-family: 'Brush Script MT', cursive, sans-serif; font-size: 24px; color: var(--primary);">Dr. Sarah Jenkins, PT</div>
+        <div style="border-top: 1px solid var(--text-muted); width: 200px; margin-top: 4px;"></div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Physiotherapist Signature</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
