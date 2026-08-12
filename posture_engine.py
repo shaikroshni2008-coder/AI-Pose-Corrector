@@ -632,6 +632,12 @@ class PostureEngine:
             "model_loaded":
                 bool(self.model_loaded),
 
+            "min_angle_achieved":
+                float(self.min_angle_achieved),
+
+            "max_angle_achieved":
+                float(self.max_angle_achieved),
+
             "keypoints":
                 keypoints.tolist()
         }

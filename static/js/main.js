@@ -17,6 +17,13 @@ let clientStream = null;
 let clientCaptureInterval = null;
 let isClientSideWebcam = false;
 
+// Client-side telemetry tracking variables
+let lastFormScore = 100.0;
+let lastWarnings = [];
+let lastActiveDurationSeconds = 0;
+let lastMinAngle = 999.0;
+let lastMaxAngle = 0.0;
+
 document.addEventListener("DOMContentLoaded", () => {
   console.log("AI Physiotherapist initialized.");
   initWebcam();
@@ -182,6 +189,14 @@ function updateUI(data) {
     }
   }
 
+  // Update client-side telemetry tracking variables
+  if (data.rep_count !== undefined) lastRepCount = data.rep_count;
+  if (data.form_score !== undefined) lastFormScore = data.form_score;
+  if (data.warnings !== undefined) lastWarnings = data.warnings;
+  if (data.active_duration_seconds !== undefined) lastActiveDurationSeconds = data.active_duration_seconds;
+  if (data.min_angle_achieved !== undefined) lastMinAngle = data.min_angle_achieved;
+  if (data.max_angle_achieved !== undefined) lastMaxAngle = data.max_angle_achieved;
+
   // Update Live Angle Gauge
   const angleValEl = document.getElementById("angle-val");
   if (angleValEl) angleValEl.textContent = Math.round(data.current_angle);
@@ -298,7 +313,20 @@ async function startSession() {
 
 async function stopSession() {
   try {
-    const res = await fetch('/api/session/stop', { method: 'POST' });
+    const res = await fetch('/api/session/stop', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        reps: lastRepCount,
+        accuracy: lastFormScore,
+        warnings: lastWarnings,
+        duration_seconds: lastActiveDurationSeconds,
+        min_angle: lastMinAngle,
+        max_angle: lastMaxAngle
+      })
+    });
     const data = await res.json();
 
     if (data.status === 'success') {

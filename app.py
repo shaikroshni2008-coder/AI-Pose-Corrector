@@ -375,34 +375,63 @@ def api_stop_session():
     Stop the current session and save its metrics.
     """
 
-    duration_sec = int(
-        max(
-            0,
-            time.time() - engine.session_start_time
+    data = request.get_json(silent=True) or {}
+
+    # Read from JSON payload if provided (ideal for client-to-server sync), fallback to engine state
+    reps = data.get("reps", None)
+    if reps is None:
+        reps = int(engine.rep_count)
+    else:
+        reps = int(reps)
+
+    accuracy = data.get("accuracy", None)
+    if accuracy is None:
+        accuracy = float(
+            round(
+                engine.form_accuracy_score,
+                1
+            )
         )
-    )
+    else:
+        accuracy = float(accuracy)
 
-    reps = int(engine.rep_count)
-
-    accuracy = float(
-        round(
-            engine.form_accuracy_score,
-            1
+    duration_sec = data.get("duration_seconds", None)
+    if duration_sec is None:
+        duration_sec = int(
+            max(
+                0,
+                time.time() - engine.session_start_time
+            )
         )
-    )
+    else:
+        duration_sec = int(duration_sec)
 
-    min_angle = (
-        float(round(engine.min_angle_achieved, 1))
-        if engine.min_angle_achieved < 900
-        else 0.0
-    )
-
-    max_angle = float(
-        round(
-            engine.max_angle_achieved,
-            1
+    min_angle = data.get("min_angle", None)
+    if min_angle is None:
+        min_angle = (
+            float(round(engine.min_angle_achieved, 1))
+            if engine.min_angle_achieved < 900
+            else 0.0
         )
-    )
+    else:
+        min_angle = float(min_angle)
+
+    max_angle = data.get("max_angle", None)
+    if max_angle is None:
+        max_angle = float(
+            round(
+                engine.max_angle_achieved,
+                1
+            )
+        )
+    else:
+        max_angle = float(max_angle)
+
+    warnings = data.get("warnings", None)
+    if warnings is None:
+        warnings = engine.warning_flags
+
+    print(f"Saving session: reps={reps}", flush=True)
 
     try:
 
@@ -418,7 +447,7 @@ def api_stop_session():
             duration_sec=duration_sec,
             min_angle=min_angle,
             max_angle=max_angle,
-            warnings=engine.warning_flags
+            warnings=warnings
         )
 
     except Exception as exc:
@@ -520,6 +549,18 @@ def api_get_current_telemetry():
             ],
             "active_duration_seconds": int(
                 active_duration
+            ),
+            "min_angle_achieved": float(
+                round(
+                    engine.min_angle_achieved,
+                    1
+                )
+            ),
+            "max_angle_achieved": float(
+                round(
+                    engine.max_angle_achieved,
+                    1
+                )
             )
         }
     )
