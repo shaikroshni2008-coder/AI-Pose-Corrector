@@ -95,6 +95,13 @@
           <video id="client-video" autoplay playsinline muted style="display: none;"></video>
           <canvas id="client-canvas" width="640" height="480" style="display: none;"></canvas>
 
+          <!-- Camera Error Overlay (Hidden by Default) -->
+          <div id="camera-error-overlay" class="camera-error-overlay" style="display: none;">
+            <i class="bi bi-camera-video-off-fill"></i>
+            <h3>Camera Access Blocked</h3>
+            <p id="camera-error-message">Please enable camera permission in your browser to use the real-time posture tracker.</p>
+          </div>
+
           <!-- Bottom Live Feedback Toast Overlay -->
           <div class="live-pill bottom-center" id="live-feedback-banner">
             <i class="bi bi-info-circle-fill"></i> Position yourself clearly in front of camera.

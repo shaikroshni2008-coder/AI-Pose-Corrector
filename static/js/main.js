@@ -30,6 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
 async function initWebcam() {
   const video = document.getElementById("client-video");
   const liveStreamImg = document.getElementById("live-stream");
+  const errorOverlay = document.getElementById("camera-error-overlay");
+
+  if (errorOverlay) errorOverlay.style.display = "none";
 
   // Try requesting browser webcam access
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -48,18 +51,45 @@ async function initWebcam() {
         return;
       }
     } catch (err) {
-      console.warn("Client-side webcam permission denied or failed. Falling back to server stream:", err);
+      console.warn("Client-side webcam permission denied or failed:", err);
+      handleWebcamError(err);
     }
   } else {
-    console.warn("Browser does not support getUserMedia. Falling back to server stream.");
+    console.warn("Browser does not support getUserMedia.");
+    handleWebcamError(new Error("getUserMedia is not supported by this browser."));
   }
+}
 
-  // Fallback: point live-stream img to server feed and poll telemetry
-  isClientSideWebcam = false;
-  if (liveStreamImg) {
-    liveStreamImg.src = "/video_feed";
+function handleWebcamError(err) {
+  const liveStreamImg = document.getElementById("live-stream");
+  const errorOverlay = document.getElementById("camera-error-overlay");
+  const errorMessage = document.getElementById("camera-error-message");
+
+  // Fallback check: if we are running locally, we can fall back to server-side camera
+  const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  if (isLocalhost) {
+    console.log("Running locally. Falling back to server-side video feed.");
+    isClientSideWebcam = false;
+    if (liveStreamImg) {
+      liveStreamImg.src = "/video_feed";
+    }
+    startTelemetryPolling();
+  } else {
+    // On deployed server (Render), server-side feed is impossible. Show error overlay.
+    isClientSideWebcam = false;
+    if (errorOverlay && errorMessage) {
+      errorOverlay.style.display = "flex";
+      
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        errorMessage.textContent = "Camera access denied. Please click the camera icon in your browser's address bar, allow permissions, and refresh the page.";
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errorMessage.textContent = "No camera hardware detected. Please connect a webcam and reload the page.";
+      } else {
+        errorMessage.textContent = `Could not access webcam: ${err.message || err}. Please ensure no other app is using your camera and reload.`;
+      }
+    }
   }
-  startTelemetryPolling();
 }
 
 function startClientCaptureLoop() {
